@@ -1,57 +1,49 @@
+language: go
 sudo: required
-dist: trusty
-language: c
-compiler:
-  - gcc
-
-before_script:
-# Extra CPython versions
-#  - sudo add-apt-repository -y ppa:fkrull/deadsnakes
-# Extra gcc versions
-#  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
-  - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
-  - sudo dpkg --add-architecture i386
-  - sudo apt-get update -qq || true
-  - sudo apt-get install -y lib32ncurses5  make bc gawk
-#  - sudo apt-get install -y python3 gcc-multilib pkg-config libffi-dev libffi-dev:i386 qemu-system mingw32
-#  - sudo apt-get install -y --force-yes gcc-arm-none-eabi
-  # For teensy build
-  - sudo apt-get install realpath
-  # For coverage testing
-  - sudo pip install cpp-coveralls
-  - gcc --version
-  - arm-none-eabi-gcc --version
-  - python3 --version
+go:
+  - 1.6.3
+before_install:
+  - sudo apt-get -qq update
 
 script:
-  - cd ./project/realtek_ameba1_va0_example/GCC-RELEASE
-  - make
-  # - make -C minimal test
-  # - make -C unix deplibs
-  # - make -C unix
-  # - make -C unix nanbox
-  # - make -C bare-arm
-  # - make -C qemu-arm test
-  # - make -C stmhal
-  # - make -C stmhal -B MICROPY_PY_WIZNET5K=1 MICROPY_PY_CC3K=1
-  # - make -C stmhal BOARD=STM32F4DISC
-  # - make -C teensy
-  # - make -C cc3200 BTARGET=application BTYPE=release
-  # - make -C cc3200 BTARGET=bootloader  BTYPE=release
-  # - make -C windows CROSS_COMPILE=i586-mingw32msvc-
+  - make run-compose-test
 
-  # run tests without coverage info
-  #- (cd tests && MICROPY_CPYTHON3=python3.4 ./run-tests)
-  #- (cd tests && MICROPY_CPYTHON3=python3.4 ./run-tests --emit native)
+services:
+  - docker
 
-  # run tests with coverage info
-  - make -C unix coverage
-  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests)
-  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests --emit native)
+before_deploy:
+  - sudo apt-get install -y python-pip
+  - sudo pip install -r requirements.txt
+  - mkdocs build
 
-after_success:
-  - (cd unix && coveralls --root .. --build-root . --gcov $(which gcov) --gcov-options '\-o build-coverage/' --include py --include extmod)
+  - GOOS=linux GOARCH=amd64 make package
+  - GOOS=linux GOARCH=386 make package
+  - GOOS=linux GOARCH=arm make package
+  - GOOS=darwin GOARCH=amd64 make package
+  - GOOS=windows BINEXT=.exe GOARCH=386 make package
+  - GOOS=windows BINEXT=.exe GOARCH=amd64 make package
 
-after_failure:
-  - (cd tests && for exp in *.exp; do testbase=$(basename $exp .exp); echo -e "\nFAILURE $testbase"; diff -u $testbase.exp $testbase.out; done)
-  - (grep "FAIL" qemu-arm/build/console.out)
+deploy:
+  - provider: releases
+    skip_cleanup: true
+    api_key:
+      secure: Jc77WnvZXxpfayDcgN71pN51ZKr/LT58a0BG6FEnVkEW2ZnhxhIrI/p8XPcPRSgz0J/BKXlLWCjJXRQ9BDYAJ7ZDXAubmxtjz5Zhkf9QiKYvkujj2sxaU+1qmNA0x86lm9o4EFbcjUZ2CKk8EB7vx+5OZss6VxpNmaOiCkv7BaenCm/hYowHWaqHu9Wkg9vU53KV9WTLqAGEllw3HglPew/kOBK8QVi25NcohWZZAiQ6wkzGkCpiFUiMWcts7iqjri7O1AaN/LqwP+8wzV9BtvH6JUCG0nkz6ek7wNZ2ubBb6R4jx1dIHifpwRbdjK1jJwlxruhM7Yswu9yGxT9YUcd1IN6ZFxblaea7Nom9ck0I90PPbj9+W0W3MluvsrUTyiP+gxD19DJ8+WI9rCoAyZRqvKoWcrHByvjDkymetghwkACddF0UMCvorDZKt7wWzoG0fnhOgf1AyaDEWQq9dz7xp2Ae/xJR3W2yM3HQ2tbkgWq9QIQYzbG9L/6lEmXdn+DHBk8LShcPfTgDwLfeS5LRl8FiXHow4Sdkd+ffjuUxCP0E6Fr/JpueiE3l0bLCc/aLP8hd6GrQGBDUuP84T1INPXltcqNPevrMXp9R8oWtSTYBurPA8QikNScZ3Zh1WU+w32oagCZb1YXdRnm3oeZYXFjWb/r3o7VDyxnSOcM=
+    file_glob: true
+    file: "dist/*.tar.gz"
+    on:
+      tags: true
+      repo: brocaar/loraserver
+
+  - provider: s3
+    skip_cleanup: true
+    access_key_id: AKIAJLTNEMD6RLNMP2NQ
+    secret_access_key:
+      secure: pnQNOFBYjOJ05WtwQxKHT/Wlgnefgox8OjaTL7xU7pDafDxlP24IKcCA9D7rg6ofWoX/OEcbtfFgJJOGRGCOheB3jji/HKlfVQJwANCJyF2mViveHSBniLPS7SlQ4YXiH1+bS0d+iPMzCiGVkBnH1v6ezzr7TDsb6436hHVI7FJZzJXy+QXX8A04pxXRtl9KJySlVR4hpcMQdY8mADFmmQ8LXjCMlIOBVjj00YCVMoZoE0WCQSmA0UB2LaMF1k0256FjPiIVJKXXh6TZmGmBpgt89D9IAQWjumgZZptGKoOBCfaLQdoS+hXsJmx3AgDWzqyx+tYiz/EXu6sjSWWDNIpvBhkHTPkTqDQqKUevL8WYdvrp42wk1/OxeqBpwh5SMA3uST6smqJ+EUS/8hmCVKQyfzvqf/hSYxARm5Qpa1yvEGwHnqXA3KoqZl8DMTivggmP/uN73kocZXwZeI7Dv8bIhSgQ+yHDgBCVR8UGhXtUp78aUIANxndVXvyJQKy9ThVCXJwtZCbAD5w88xt9LMAfnVmPQcf+i4aDWGDNR51VwysnGeixOUvLFPtD0EWx9W1lFtwQtK1hjXnm6SPkJ3CudMPjjpI/6QrHdv6lHMAd8qPlAEiz/OhdZxDkpENYUXk07mzJMB73K5+GMZqtuPCRBH1xJYg7m7IILT3QtPE=
+    bucket: docs.loraserver.io
+    local-dir: site
+    upload-dir: loraserver
+    acl: public_read
+    region: eu-west-1
+    on:
+      branch: master
+      repo: brocaar/loraserver
