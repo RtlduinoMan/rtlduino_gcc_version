@@ -3,7 +3,7 @@
 ![logo_ex_new.png](docs/img/logo.png "logo")
 
 [![Join the chat at https://gitter.im/iot-tech-now/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link](https://img.shields.io/gitter/room/badges/shields.svg)](https://gitter.im/iot-tech-now/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
-[![Build Status](https://travis-ci.org/nodemcu/nodemcu-firmware.svg)](https://travis-ci.org/lvjh/RTL8710_SDK_GCC_VERSION)
+[![Build Status](https://travis-ci.org/nodemcu/nodemcu-firmware.svg)](https://travis-ci.org/RtlduinoMan/rtlduino_gcc_version)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-yellow.svg?style=flat)](http://rtl8710.iot-tech-now.com/rtl8710/site/)
 > 
 > ### A low power consumption, low cost,IOT WIFI solution of the operating system.
